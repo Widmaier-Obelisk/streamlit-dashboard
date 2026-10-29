@@ -48,4 +48,4 @@ jobs:
         run: |
           cd /home/john/services/bespoke/data-dashboard
           docker compose pull
-          docker compose up -d --build --pull always
+          docker compose up -d --pull always

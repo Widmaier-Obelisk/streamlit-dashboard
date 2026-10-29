@@ -1,6 +1,7 @@
 services:
   dashboard:
-    build: .
+    image: johnwid92/data-dashboard:latest
+    pull_policy: always
     container_name: data-dashboard
     ports:
       - "8501:8501"
