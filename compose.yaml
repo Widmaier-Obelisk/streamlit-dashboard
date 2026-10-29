@@ -6,6 +6,7 @@ services:
       - "8501:8501"
     environment:
       LETTERBOXD_DATA_PATH: /data/pipelines/letterboxd/raw/activity.json
+      FINANCIAL_DATA_PATH: /data/pipelines/financial/raw/balances.json
     volumes:
       - /srv/data/pipelines:/data/pipelines:ro
     restart: unless-stopped
