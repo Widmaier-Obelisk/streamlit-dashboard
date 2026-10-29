@@ -1,5 +1,7 @@
 import os
+import sys
 from datetime import datetime
+from hashlib import sha256
 from pathlib import Path
 
 import pandas as pd
@@ -7,6 +9,40 @@ import streamlit as st
 
 from data.letterboxd import load_activity
 from data.financial import load_balances, load_display_accounts
+
+
+def log_data_file(label: str, data_path: Path) -> None:
+    try:
+        stat = data_path.stat()
+        digest = sha256(data_path.read_bytes()).hexdigest()[:12]
+        print(
+            f"[dashboard] {label}: path={data_path} exists=True "
+            f"mtime={datetime.fromtimestamp(stat.st_mtime).isoformat()} "
+            f"size={stat.st_size} sha256={digest}",
+            file=sys.stderr,
+            flush=True,
+        )
+    except FileNotFoundError:
+        print(
+            f"[dashboard] {label}: path={data_path} exists=False",
+            file=sys.stderr,
+            flush=True,
+        )
+    except OSError as exc:
+        print(
+            f"[dashboard] {label}: path={data_path} stat_error={exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
+print(
+    f"[dashboard] startup: cwd={Path.cwd()} "
+    f"LETTERBOXD_DATA_PATH={os.getenv('LETTERBOXD_DATA_PATH')} "
+    f"FINANCIAL_DATA_PATH={os.getenv('FINANCIAL_DATA_PATH')}",
+    file=sys.stderr,
+    flush=True,
+)
 
 st.set_page_config(
     page_title="Data Dashboard",
@@ -20,7 +56,16 @@ st.caption("A personal dashboard for aggregating important and interesting data.
 st.header("Financial Overview")
 
 try:
+    financial_path = Path(
+        os.getenv("FINANCIAL_DATA_PATH", "sample_data/balances.json")
+    )
+    log_data_file("financial", financial_path)
     finances = load_balances()
+    print(
+        f"[dashboard] financial: loaded records={len(finances)}",
+        file=sys.stderr,
+        flush=True,
+    )
     display_accounts = load_display_accounts()
     finances = finances[finances["id"].isin(display_accounts)]
 
@@ -62,8 +107,17 @@ except Exception as exc:
 def letterboxd_section() -> None:
     st.divider()
 
+    data_path = Path(
+        os.getenv("LETTERBOXD_DATA_PATH", "sample_data/activity.json")
+    )
     try:
+        log_data_file("letterboxd", data_path)
         df = load_activity()
+        print(
+            f"[dashboard] letterboxd: loaded records={len(df)} columns={list(df.columns)}",
+            file=sys.stderr,
+            flush=True,
+        )
     except (FileNotFoundError, ValueError, OSError) as exc:
         st.error(f"Unable to load Letterboxd data: {exc}")
         st.stop()
@@ -71,7 +125,6 @@ def letterboxd_section() -> None:
         st.error(f"Unable to parse the data file: {exc}")
         st.stop()
 
-    data_path = Path(os.getenv("LETTERBOXD_DATA_PATH", "sample_data/activity.json"))
     st.caption(f"Source: {data_path} · Updated: {datetime.fromtimestamp(data_path.stat().st_mtime).isoformat(timespec='seconds')}")
 
     if df.empty:
